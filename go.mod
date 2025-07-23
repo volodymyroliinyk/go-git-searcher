@@ -1,3 +1,3 @@
-module cover_letter_generator
+module go_git_searcher
 
 go 1.23
