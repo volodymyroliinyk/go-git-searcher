@@ -21,14 +21,14 @@ type GitProject struct {
     LastCommitDate time.Time
 }
 
-// Додайте цей helper для примусового виводу
+// Add this helper to force output
 func printAndFlush(s string) {
     fmt.Print(s)
 
-    // os.Stdout має тип *os.File і вже підтримує метод Sync()
-    // Тому не потрібен type assertion.
+    // os.Stdout is of type *os.File and already supports the Sync() method
+    // Therefore, type assertion is not needed.
     if err := os.Stdout.Sync(); err != nil {
-        // Бажано обробити помилку синхронізації, але часто її ігнорують
+        // Synchronization error handling is desirable, but often ignored
         // fmt.Printf("Error syncing stdout: %v\n", err)
     }
 }
@@ -67,10 +67,10 @@ func main() {
             }
 
             if err != nil {
-                // Логуємо помилку (наприклад, "permission denied") і повертаємо nil
-                // для продовження обходу інших частин дерева.
+                // Log the error (for example, "permission denied") and return nil
+                // to continue traversing other parts of the tree.
                 fmt.Printf("🚫 Skipped due to error in %s: %v\n", path, err)
-                return nil // Продовжуємо обхід
+                return nil // We continue the detour
             }
             if info.IsDir() && strings.HasSuffix(path, "/.git") {
                 printAndFlush(path)
@@ -78,7 +78,7 @@ func main() {
                 projectName := filepath.Base(projectPath)
                 remoteRepo, lastCommitDate, err := getGitInfo(projectPath)
                 if err != nil {
-                    fmt.Printf("!❌ [%s] Skipping project due to error: %v\n", projectPath, err) // Позначаємо пропуск
+                    fmt.Printf("!❌ [%s] Skipping project due to error: %v\n", projectPath, err) // Mark the gap
                     return nil
                 }
                 gitProjects = append(gitProjects, GitProject{
@@ -145,22 +145,22 @@ func main() {
 }
 
 func getGitInfo(projectPath string) (string, time.Time, error) {
-    // Встановлюємо таймаут 10 секунд для операцій git
+    // Set a timeout of 10 seconds for git operations
     ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
     defer cancel()
 
     var devNull *os.File
-    // Спробуємо відкрити /dev/null один раз
-    // Важливо: обробка помилки відкриття devNull є окремою від помилок git
+    // Try to open /dev/null once
+    // Important: devNull open error handling is separate from git errors
     if dn, err := os.Open(os.DevNull); err == nil {
         devNull = dn
         defer devNull.Close()
     }
 
-    // --- 1. Отримання Remote Repo ---
+    // --- 1. Getting Remote Repo ---
     cmd := exec.CommandContext(ctx, "git", "remote", "get-url", "origin")
     cmd.Dir = projectPath
-    // Якщо вдалося відкрити /dev/null, перенаправляємо stderr туди
+    // If we managed to open /dev/null, redirect stderr there
     if devNull != nil {
         cmd.Stderr = devNull
     }
@@ -169,17 +169,17 @@ func getGitInfo(projectPath string) (string, time.Time, error) {
     remoteRepo := ""
 
     if err != nil {
-        // Перевіряємо таймаут
+        // Check the timeout
         if errors.Is(ctx.Err(), context.DeadlineExceeded) {
             return "", time.Time{}, fmt.Errorf("Git remote operation timed out after 10s")
         }
-        // Логуємо, але продовжуємо
+        // Log in, but continue
         fmt.Printf("⚠️ [%s] Failed to get remote repo: %v\n", projectPath, err)
     } else {
         remoteRepo = strings.TrimSpace(string(remoteRepoBytes))
     }
 
-    // --- 2. Отримання дати останнього коміту ---
+    // --- 2. Get the date of the last commit ---
     cmd = exec.CommandContext(ctx, "git", "log", "-1", "--format=%cd", "--date=iso")
     cmd.Dir = projectPath
     if devNull != nil {
@@ -188,7 +188,7 @@ func getGitInfo(projectPath string) (string, time.Time, error) {
 
     lastCommitBytes, err := cmd.Output()
     if err != nil {
-        // Перевіряємо, чи таймаут був причиною
+        // Check if a timeout was the cause
         if errors.Is(ctx.Err(), context.DeadlineExceeded) {
             return remoteRepo, time.Time{}, fmt.Errorf("Git log operation timed out after 10s")
         }
@@ -196,8 +196,8 @@ func getGitInfo(projectPath string) (string, time.Time, error) {
     }
 
     lastCommitDateStr := strings.TrimSpace(string(lastCommitBytes))
-    // Виправлення: git log --date=iso виводить "2024-05-15 15:00:00 +0300",
-    // ваш формат правильний.
+    // Fix: git log --date=iso outputs "2024-05-15 15:00:00 +0300",
+    // your format is correct.
     lastCommitDate, err := time.Parse("2006-01-02 15:04:05 -0700", lastCommitDateStr)
     if err != nil {
         return remoteRepo, time.Time{}, fmt.Errorf("Failed to parse commit date '%s': %v", lastCommitDateStr, err)
