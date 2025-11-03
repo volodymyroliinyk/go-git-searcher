@@ -7,6 +7,6 @@ Search all Git repositories in the directory(ies), and generate a `git_projects_
 `go run main.go --directory="/path/to/directory";`\
 `go run main.go --directory="/path/to/directory1" --directory="/path/to/directory2";`
 
-## TODO
+## Todo:
 
 - unit tests
