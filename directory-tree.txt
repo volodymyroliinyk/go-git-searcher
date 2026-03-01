@@ -1,0 +1,8 @@
+go_git_searcher/
+├── LICENSE
+├── README.md
+├── directory-tree.txt
+├── go.mod
+├── go.sum
+├── main.go
+├── main_test.go
